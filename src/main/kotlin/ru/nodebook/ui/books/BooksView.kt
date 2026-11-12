@@ -1,9 +1,10 @@
 package ru.nodebook.ui.books
 
+import javafx.beans.value.ChangeListener
+import javafx.beans.value.ObservableValue
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.*
-import javafx.scene.input.MouseButton
 import javafx.scene.layout.*
 import ru.nodebook.core.model.KnowledgeBaseInfo
 
@@ -14,6 +15,7 @@ class BooksView(private val controller: BooksController) {
         style = "-fx-padding: 15;"
     }
 
+    var onChooseWorkspace: (() -> Unit)? = null
     var onOpenSection: ((String) -> Unit)? = null
 
     // Workspace section
@@ -59,7 +61,7 @@ class BooksView(private val controller: BooksController) {
 
     init {
         // Wire button actions
-        chooseWorkspaceBtn.setOnAction { controller.chooseWorkspace() }
+        chooseWorkspaceBtn.setOnAction { onChooseWorkspace?.invoke() }
         createBtn.setOnAction { controller.createBook(newBookField.text) }
         sectionNames.forEachIndexed { i, section ->
             sectionBtns[i].setOnAction { onOpenSection?.invoke(section) }
@@ -77,15 +79,13 @@ class BooksView(private val controller: BooksController) {
             }
         }
 
-        // Double-click on list item
-        booksList.setOnMouseClicked { event ->
-            if (event.button == MouseButton.PRIMARY && event.clickCount == 2) {
-                val idx = booksList.getSelectionModel().selectedItemProperty().value
-                if (idx != null) {
-                    controller.selectBook(idx)
-                }
+        // Single-click selection
+        booksList.selectionModel.selectedItemProperty().addListener(
+            ChangeListener { _: ObservableValue<out KnowledgeBaseInfo?>, _: KnowledgeBaseInfo?, newSel: KnowledgeBaseInfo? ->
+                if (newSel != null) controller.selectBook(newSel)
+                else controller.clearSelection()
             }
-        }
+        )
 
         // Build layout
         val topSection = VBox(8.0, workspaceLabel, workspaceBox, newBookLabel, newBookBox).apply {
@@ -111,8 +111,12 @@ class BooksView(private val controller: BooksController) {
     }
 
     fun updateBooksList(books: List<KnowledgeBaseInfo>) {
-        booksList.items.clear()
+        val selectedPath = booksList.selectionModel.selectedItem?.path
         booksList.items.setAll(books)
+        if (selectedPath != null) {
+            val idx = booksList.items.indexOfFirst { it.path == selectedPath }
+            if (idx >= 0) booksList.selectionModel.select(idx)
+        }
     }
 
     fun setWorkspacePath(path: String?) {

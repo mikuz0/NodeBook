@@ -1,6 +1,8 @@
 package ru.nodebook.ui
 
 import javafx.application.Application
+import javafx.stage.DirectoryChooser
+import javafx.stage.Stage
 import ru.nodebook.core.config.AppPaths
 import ru.nodebook.core.config.SettingsStore
 import ru.nodebook.ui.books.BooksController
@@ -10,12 +12,13 @@ import ru.nodebook.ui.section.SectionWindow
 class MainApp : Application() {
 
     private val sectionWindows = mutableListOf<SectionWindow>()
+    private lateinit var controller: BooksController
 
-    override fun start(stage: javafx.stage.Stage) {
+    override fun start(primaryStage: Stage) {
         AppPaths.initConfigDir()
         val settings = SettingsStore.load()
 
-        val controller = BooksController()
+        controller = BooksController()
         val view = BooksView(controller)
         controller.bindView(view)
 
@@ -27,14 +30,14 @@ class MainApp : Application() {
             }
         }
 
-        val stage = javafx.stage.Stage()
-        stage.title = "NodeBook — Knowledge Base Manager"
-        stage.minWidth = 700.0
-        stage.minHeight = 500.0
-        stage.scene = javafx.scene.Scene(view.root, 800.0, 600.0)
-        stage.show()
+        primaryStage.title = "NodeBook — Knowledge Base Manager"
+        primaryStage.minWidth = 700.0
+        primaryStage.minHeight = 500.0
+        primaryStage.scene = javafx.scene.Scene(view.root, 800.0, 600.0)
+        primaryStage.show()
 
-        // Wire section buttons to open SectionWindow
+        // Wire callbacks
+        view.onChooseWorkspace = { chooseWorkspace(primaryStage) }
         view.onOpenSection = { sectionName ->
             controller.selectedBook?.let { book ->
                 val win = SectionWindow()
@@ -43,6 +46,20 @@ class MainApp : Application() {
                 win.openSection(book.path, sectionName)
             }
         }
+    }
+
+    private fun chooseWorkspace(stage: Stage) {
+        val chooser = DirectoryChooser()
+        chooser.title = "Choose Workspace"
+        val selectedDir = chooser.showDialog(stage)
+        if (selectedDir != null) {
+            controller.setWorkspace(selectedDir.toPath())
+        }
+    }
+
+    override fun stop() {
+        if (::controller.isInitialized) controller.shutdown()
+        super.stop()
     }
 }
 

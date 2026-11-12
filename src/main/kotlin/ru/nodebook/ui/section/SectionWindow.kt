@@ -19,6 +19,9 @@ class SectionWindow : BookAware {
 
     private val log = LoggerFactory.getLogger(SectionWindow::class.java)
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
+    private val executor = java.util.concurrent.Executors.newFixedThreadPool(2) { r ->
+        Thread(r, "section-io").apply { isDaemon = true }
+    }
 
     private val stage = Stage()
     private val treeView = TreeView<TreeItemData>()
@@ -58,7 +61,7 @@ class SectionWindow : BookAware {
                 UiUtils.errorAlert(stage, "Load Error", "Failed to load section: ${exception?.message}")
             }
         }
-        java.util.concurrent.Executors.newSingleThreadExecutor().submit(task)
+        executor.submit(task)
     }
 
     private fun buildTree(nodes: List<NodeRef>) {
@@ -94,7 +97,7 @@ class SectionWindow : BookAware {
 
         if (nodeRef.isContainer) {
             // Load children in background
-            java.util.concurrent.Executors.newSingleThreadExecutor().submit {
+            executor.submit {
                 val childRefs = NodeRepository.listChildren(nodeRef.path)
                 if (childRefs.isNotEmpty()) {
                     javafx.application.Platform.runLater {
@@ -119,6 +122,11 @@ class SectionWindow : BookAware {
     }
 
     init {
+        // Shutdown executor when window closes
+        stage.setOnCloseRequest {
+            executor.shutdownNow()
+        }
+
         val refreshBtn = Button("Refresh").apply {
             setOnAction {
                 UiUtils.infoAlert(stage, "Info", "Refresh requires re-opening the section")

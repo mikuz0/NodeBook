@@ -1,19 +1,20 @@
 package ru.nodebook.ui.books
 
 import javafx.concurrent.Task
-import javafx.stage.FileChooser
 import ru.nodebook.core.config.Settings
 import ru.nodebook.core.config.SettingsStore
 import ru.nodebook.core.model.KnowledgeBaseInfo
 import ru.nodebook.core.repo.KnowledgeBaseRepository
+import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import org.slf4j.LoggerFactory
 
 class BooksController {
 
     private val log = LoggerFactory.getLogger(BooksController::class.java)
-    private val executor = java.util.concurrent.Executors.newFixedThreadPool(2)
+    private val executor = java.util.concurrent.Executors.newFixedThreadPool(2) { r ->
+        Thread(r, "books-io").apply { isDaemon = true }
+    }
 
     var selectedBook: KnowledgeBaseInfo? = null
         private set
@@ -26,25 +27,23 @@ class BooksController {
         view = v
     }
 
-    fun chooseWorkspace() {
-        val chooser = FileChooser().apply {
-            title = "Select Workspace Directory"
-            initialDirectory = java.nio.file.Paths.get(System.getProperty("user.home")).toFile()
-        }
-        val dir = chooser.showOpenDialog(null) ?: return
-        setWorkspace(Paths.get(dir.path))
-    }
-
     fun setWorkspace(path: Path) {
+        if (!Files.isDirectory(path)) {
+            view.setStatus("Error: not a directory: $path")
+            return
+        }
+        if (!Files.isReadable(path) || !Files.isWritable(path)) {
+            view.setStatus("Error: no read/write access: $path")
+            return
+        }
+
         currentWorkspace = path
+        SettingsStore.save(Settings(workspace = path.toString()))
+        view.updateBooksList(emptyList())
+        selectedBook = null
+        view.setSectionButtonsEnabled(false)
         view.setWorkspacePath(path.toString())
         view.setStatus("Loading books...")
-        view.setSectionButtonsEnabled(false)
-
-        // Save settings
-        SettingsStore.save(Settings(workspace = path.toString()))
-
-        // Load books in background
         loadBooksInBackground(path)
     }
 
@@ -57,13 +56,10 @@ class BooksController {
             override fun succeeded() {
                 val books = value
                 view.updateBooksList(books)
-                view.setStatus("${books.size} knowledge base(s) found")
-                if (books.isNotEmpty()) {
-                    selectedBook = books[0]
-                    view.setSectionButtonsEnabled(true)
+                if (books.isEmpty()) {
+                    view.setStatus("No knowledge bases in workspace: $path")
                 } else {
-                    selectedBook = null
-                    view.setSectionButtonsEnabled(false)
+                    view.setStatus("${books.size} knowledge base(s) found")
                 }
             }
 
@@ -79,6 +75,11 @@ class BooksController {
         selectedBook = book
         view.setSectionButtonsEnabled(true)
         view.setStatus("Selected: ${book.name}")
+    }
+
+    fun clearSelection() {
+        selectedBook = null
+        view.setSectionButtonsEnabled(false)
     }
 
     fun createBook(name: String) {
@@ -111,5 +112,10 @@ class BooksController {
             }
         }
         executor.submit(task)
+    }
+
+    fun shutdown() {
+        log.info("BooksController shut down")
+        executor.shutdownNow()
     }
 }
