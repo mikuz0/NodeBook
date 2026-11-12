@@ -1,4 +1,4 @@
-package ru.nodebook.ui
+package ru.nodebook.ui.section
 
 import javafx.collections.FXCollections
 import javafx.concurrent.Task
@@ -13,6 +13,7 @@ import ru.nodebook.core.model.NodeRef
 import ru.nodebook.core.repo.NodeRepository
 import java.nio.file.Path
 import org.slf4j.LoggerFactory
+import ru.nodebook.ui.common.UiUtils
 
 class SectionWindow : BookAware {
 

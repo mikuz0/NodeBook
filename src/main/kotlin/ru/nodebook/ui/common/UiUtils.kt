@@ -1,4 +1,4 @@
-package ru.nodebook.ui
+package ru.nodebook.ui.common
 
 import javafx.scene.control.Alert
 import javafx.scene.control.ButtonType

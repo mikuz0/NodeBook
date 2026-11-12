@@ -1,9 +1,11 @@
-package ru.nodebook.app
+package ru.nodebook.ui
 
 import javafx.application.Application
 import ru.nodebook.core.config.AppPaths
 import ru.nodebook.core.config.SettingsStore
-import ru.nodebook.ui.SectionWindow
+import ru.nodebook.ui.books.BooksController
+import ru.nodebook.ui.books.BooksView
+import ru.nodebook.ui.section.SectionWindow
 
 class MainApp : Application() {
 

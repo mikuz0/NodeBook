@@ -1,4 +1,4 @@
-package ru.nodebook.app
+package ru.nodebook.ui.books
 
 import javafx.geometry.Insets
 import javafx.geometry.Pos

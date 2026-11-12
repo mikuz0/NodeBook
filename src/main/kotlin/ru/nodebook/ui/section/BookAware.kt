@@ -1,4 +1,4 @@
-package ru.nodebook.ui
+package ru.nodebook.ui.section
 
 import javafx.stage.Stage
 import java.nio.file.Path

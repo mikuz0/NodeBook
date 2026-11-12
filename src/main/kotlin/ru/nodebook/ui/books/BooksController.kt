@@ -1,4 +1,4 @@
-package ru.nodebook.app
+package ru.nodebook.ui.books
 
 import javafx.concurrent.Task
 import javafx.stage.FileChooser
