@@ -180,4 +180,37 @@ class KnowledgeBaseRepositoryTest {
         assertEquals(1, numberValue.toInt())
         assertEquals("1", pinNumberValue)
     }
+
+    @Test
+    fun `create book creates section view files`() {
+        val workspace = tempDir.resolve("workspace")
+        Files.createDirectories(workspace)
+
+        val bookDir = KnowledgeBaseRepository.create("view-test-book", workspace)
+
+        // Check view.json exists in each section
+        val sections = listOf("components", "modules", "standards")
+        val expectedTitles = mapOf(
+            "components" to "Components",
+            "modules" to "Modules",
+            "standards" to "Standards"
+        )
+
+        sections.forEach { sectionName ->
+            val sectionDir = bookDir.resolve(sectionName)
+            val viewFile = sectionDir.resolve("view.json")
+            assertTrue(Files.isRegularFile(viewFile), "view.json should exist in $sectionName")
+
+            // Check hasSectionView
+            assertTrue(KnowledgeBaseRepository.hasSectionView(sectionDir), "hasSectionView should return true for $sectionName")
+
+            // Check loadSectionView
+            val view = KnowledgeBaseRepository.loadSectionView(sectionDir)
+            assertNotNull(view, "loadSectionView should not return null for $sectionName")
+            assertEquals(1, view.schemaVersion)
+            assertEquals("tree", view.kind)
+            assertEquals(expectedTitles[sectionName], view.title)
+            assertEquals(expectedTitles[sectionName], view.displayName(sectionName))
+        }
+    }
 }

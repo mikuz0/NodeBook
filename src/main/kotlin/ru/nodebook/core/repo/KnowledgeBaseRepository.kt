@@ -6,6 +6,7 @@ import ru.nodebook.core.model.KnowledgeBaseInfo
 import ru.nodebook.core.model.NodeMeta
 import ru.nodebook.core.model.NodeType
 import ru.nodebook.core.samples.ComponentSamples
+import ru.nodebook.core.model.SectionView
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import org.slf4j.LoggerFactory
@@ -21,6 +22,8 @@ object KnowledgeBaseRepository {
         encodeDefaults = true
     }
 
+    private val VIEW_FILE = "view.json"
+
     /**
      * Create a new knowledge base: directory with book.json and section directories.
      */
@@ -35,7 +38,12 @@ object KnowledgeBaseRepository {
             val content = json.encodeToString(KnowledgeBase.serializer(), book)
             Files.write(bookFile, content.toByteArray(Charsets.UTF_8))
 
-            // Create section directories with node.json
+            // Create section directories with node.json and view.json
+            val sectionTitles = mapOf(
+                "components" to "Components",
+                "modules" to "Modules",
+                "standards" to "Standards"
+            )
             book.sections.forEach { sectionName ->
                 val sectionDir = bookDir.resolve(sectionName)
                 Files.createDirectories(sectionDir)
@@ -47,6 +55,16 @@ object KnowledgeBaseRepository {
                     description = "Section: $sectionName"
                 )
                 NodeRepository.save(sectionDir, sectionMeta)
+
+                // Create view.json for each section
+                val view = SectionView(
+                    schemaVersion = 1,
+                    kind = "tree",
+                    title = sectionTitles[sectionName] ?: sectionName.replaceFirstChar { it.uppercaseChar() }
+                )
+                val viewFile = sectionDir.resolve(VIEW_FILE)
+                val viewContent = json.encodeToString(SectionView.serializer(), view)
+                Files.write(viewFile, viewContent.toByteArray(Charsets.UTF_8))
             }
 
             // Create sample component structure in components section
@@ -189,6 +207,29 @@ object KnowledgeBaseRepository {
         } catch (e: Exception) {
             log.error("Failed to scan workspace $workspace", e)
             emptyList()
+        }
+    }
+
+    /**
+     * Проверить, есть ли view.json в папке раздела.
+     */
+    fun hasSectionView(sectionDir: Path): Boolean {
+        return Files.isRegularFile(sectionDir.resolve(VIEW_FILE))
+    }
+
+    /**
+     * Загрузить SectionView из папки раздела.
+     * Возвращает null, если view.json отсутствует или некорректен.
+     */
+    fun loadSectionView(sectionDir: Path): SectionView? {
+        return try {
+            val viewFile = sectionDir.resolve(VIEW_FILE)
+            if (!Files.isRegularFile(viewFile)) return null
+            val content = Files.readString(viewFile)
+            json.decodeFromString(SectionView.serializer(), content)
+        } catch (e: Exception) {
+            log.warn("Failed to load section view from $sectionDir: ${e.message}")
+            null
         }
     }
 }

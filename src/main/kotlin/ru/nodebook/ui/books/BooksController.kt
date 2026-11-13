@@ -75,11 +75,36 @@ class BooksController {
         selectedBook = book
         view.setSectionButtonsEnabled(true)
         view.setStatus("Selected: ${book.name}")
+        // Обновить кнопки разделов динамически
+        val task = object : Task<Unit>() {
+            override fun call() {
+                try {
+                    val knowledgeBase = KnowledgeBaseRepository.load(book.path)
+                    javafx.application.Platform.runLater {
+                        view.updateSectionButtons(book.path, knowledgeBase.sections)
+                    }
+                } catch (e: Exception) {
+                    log.error("Failed to load book sections", e)
+                    javafx.application.Platform.runLater {
+                        view.setStatus("Error loading sections: ${e.message}")
+                        view.setSectionButtonsEnabled(false)
+                    }
+                }
+            }
+            override fun failed() {
+                javafx.application.Platform.runLater {
+                    view.setStatus("Error loading sections: ${exception?.message}")
+                    view.setSectionButtonsEnabled(false)
+                }
+            }
+        }
+        executor.submit(task)
     }
 
     fun clearSelection() {
         selectedBook = null
         view.setSectionButtonsEnabled(false)
+        view.updateSectionButtons(java.nio.file.Path.of(""), emptyList())
     }
 
     fun createBook(name: String) {

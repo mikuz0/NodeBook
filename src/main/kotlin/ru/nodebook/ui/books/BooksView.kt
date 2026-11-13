@@ -45,16 +45,13 @@ class BooksView(private val controller: BooksController) {
         style = "-fx-text-fill: gray;"
     }
 
-    // Section buttons
-    private val sectionNames = listOf("components", "modules", "standards")
-    private val sectionBtns = sectionNames.map { section ->
-        Button(section.replaceFirstChar { it.uppercaseChar() })
-    }
+    // Section buttons (динамические)
     private val sectionBtnBox = FlowPane().apply {
         hgap = 10.0
         vgap = 10.0
         alignment = Pos.CENTER_LEFT
     }
+    private var currentSectionBtns: MutableList<Button> = mutableListOf()
 
     // Books list
     private val booksList = ListView<KnowledgeBaseInfo>()
@@ -63,10 +60,6 @@ class BooksView(private val controller: BooksController) {
         // Wire button actions
         chooseWorkspaceBtn.setOnAction { onChooseWorkspace?.invoke() }
         createBtn.setOnAction { controller.createBook(newBookField.text) }
-        sectionNames.forEachIndexed { i, section ->
-            sectionBtns[i].setOnAction { onOpenSection?.invoke(section) }
-        }
-        sectionBtnBox.children.setAll(sectionBtns)
 
         // Cell factory for books list
         booksList.cellFactory = javafx.util.Callback {
@@ -127,7 +120,34 @@ class BooksView(private val controller: BooksController) {
         statusLabel.text = msg
     }
 
+    /**
+     * Обновить кнопки разделов динамически на основе view.json.
+     */
+    fun updateSectionButtons(bookPath: java.nio.file.Path, sections: List<String>) {
+        sectionBtnBox.children.clear()
+        currentSectionBtns.clear()
+
+        sections.forEach { sectionName ->
+            val sectionDir = bookPath.resolve(sectionName)
+            if (ru.nodebook.core.repo.KnowledgeBaseRepository.hasSectionView(sectionDir)) {
+                val view = ru.nodebook.core.repo.KnowledgeBaseRepository.loadSectionView(sectionDir)
+                val title = view?.displayName(sectionName) ?: sectionName.replaceFirstChar { it.uppercaseChar() }
+                val btn = Button(title).apply {
+                    setOnAction { onOpenSection?.invoke(sectionName) }
+                }
+                sectionBtnBox.children.add(btn)
+                currentSectionBtns.add(btn)
+            }
+        }
+
+        if (sectionBtnBox.children.isEmpty()) {
+            statusLabel.text = "No sections available"
+        } else {
+            statusLabel.text = "${sectionBtnBox.children.size} section(s) available"
+        }
+    }
+
     fun setSectionButtonsEnabled(enabled: Boolean) {
-        sectionBtns.forEach { it.isDisable = !enabled }
+        currentSectionBtns.forEach { it.isDisable = !enabled }
     }
 }
