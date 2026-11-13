@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "CHT8310",
+  "description": "Digital temperature and humidity sensor, I2C, DFN-3x3-6",
+  "model3dPath": null,
+  "ports": [
+    { "number": 1, "pinNumber": "1", "name": "SDA", "description": "I2C data" },
+    { "number": 2, "pinNumber": "2", "name": "GND", "description": "Ground" },
+    { "number": 3, "pinNumber": "3", "name": "ALERT", "description": "Alert output (open-drain)" },
+    { "number": 4, "pinNumber": "4", "name": "AD0", "description": "I2C address select" },
+    { "number": 5, "pinNumber": "5", "name": "VCC", "description": "Power supply" },
+    { "number": 6, "pinNumber": "6", "name": "SCL", "description": "I2C clock" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "CHT8320",
+  "description": "Digital temperature and humidity sensor, I2C/SMBus, DFN-2x2-4",
+  "model3dPath": null,
+  "ports": [
+    { "number": 1, "pinNumber": "1", "name": "VCC", "description": "Power supply (1.8V–5.5V)" },
+    { "number": 2, "pinNumber": "2", "name": "SCL", "description": "I2C clock" },
+    { "number": 3, "pinNumber": "3", "name": "SDA", "description": "I2C data" },
+    { "number": 4, "pinNumber": "4", "name": "GND", "description": "Ground" }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "PHY6222QC-W04",
+  "description": "BLE 5.2 SoC, ARM Cortex-M0, QFN32. Pins per TuyaOS reference.",
+  "model3dPath": null,
+  "ports": [
+    { "number": 1, "pinNumber": "P0", "name": "UART0_RX", "description": "UART0 receive (log)" },
+    { "number": 2, "pinNumber": "P2", "name": "UART0_TX", "description": "UART0 transmit (log)" },
+    { "number": 3, "pinNumber": "P9", "name": "UART1_TX", "description": "UART1 transmit (flash/debug)" },
+    { "number": 4, "pinNumber": "P10", "name": "UART1_RX", "description": "UART1 receive (flash/debug)" },
+    { "number": 5, "pinNumber": "P23", "name": "I2C0_SDA", "description": "I2C0 data" },
+    { "number": 6, "pinNumber": "P24", "name": "I2C0_SCL", "description": "I2C0 clock" },
+    { "number": 7, "pinNumber": "P31", "name": "SPI0_CLK", "description": "SPI0 clock" },
+    { "number": 8, "pinNumber": "P32", "name": "SPI0_CS", "description": "SPI0 chip select" },
+    { "number": 9, "pinNumber": "P18", "name": "SPI0_SDI", "description": "SPI0 data in" },
+    { "number": 10, "pinNumber": "P20", "name": "SPI0_SDO", "description": "SPI0 data out" },
+    { "number": 11, "pinNumber": "P1", "name": "BOOT_DET", "description": "Power-on detection" },
+    { "number": 12, "pinNumber": "P7", "name": "KEY", "description": "Wake-up / factory reset button" }
+  ]
+}

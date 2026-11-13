@@ -1,10 +1,13 @@
 package ru.nodebook.core.repo
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class KnowledgeBaseRepositoryTest {
@@ -99,5 +102,82 @@ class KnowledgeBaseRepositoryTest {
         assertEquals(1, loaded.schemaVersion)
         assertEquals(1, loaded.version)
         assertEquals(listOf("components", "modules", "standards"), loaded.sections)
+    }
+
+    @Test
+    fun `create book creates sample component structure`() {
+        val workspace = tempDir.resolve("workspace")
+        Files.createDirectories(workspace)
+
+        val bookDir = KnowledgeBaseRepository.create("sample-book", workspace)
+        val componentsDir = bookDir.resolve("components")
+
+        // Check categories exist
+        val categories = mapOf(
+            "resistor" to "Resistor",
+            "capacitor" to "Capacitor",
+            "microcontroller" to "Microcontroller",
+            "sensor" to "Sensor"
+        )
+
+        categories.forEach { (slug, name) ->
+            val categoryDir = componentsDir.resolve(slug)
+            assertTrue(Files.isDirectory(categoryDir), "Category directory $slug should exist")
+
+            val nodeFile = categoryDir.resolve("node.json")
+            assertTrue(Files.isRegularFile(nodeFile), "node.json should exist in $slug")
+            val content = Files.readString(nodeFile)
+            assertTrue(content.contains("\"type\"") && content.contains("\"CATEGORY\""), "Category type should be CATEGORY")
+            assertTrue(content.contains("\"slug\"") && content.contains("\"$slug\""), "Category slug should be $slug")
+            assertTrue(content.contains("\"name\"") && content.contains("\"$name\""), "Category name should be $name")
+
+            // Check manufacturer exists
+            val manufacturerDir = categoryDir.resolve("manufacturer")
+            assertTrue(Files.isDirectory(manufacturerDir), "Manufacturer directory should exist in $slug")
+
+            val manufNodeFile = manufacturerDir.resolve("node.json")
+            assertTrue(Files.isRegularFile(manufNodeFile), "node.json should exist in manufacturer")
+            val manufContent = Files.readString(manufNodeFile)
+            assertTrue(manufContent.contains("\"type\"") && manufContent.contains("\"MANUFACTURER\""), "Manufacturer type should be MANUFACTURER")
+        }
+
+        // Check specific component files exist
+        val microcontrollerManufacturer = componentsDir.resolve("microcontroller/manufacturer")
+        assertTrue(Files.isRegularFile(microcontrollerManufacturer.resolve("atmega328p.node")), "atmega328p.node should exist")
+        assertTrue(Files.isRegularFile(microcontrollerManufacturer.resolve("phy6222qc-w04.node")), "phy6222qc-w04.node should exist")
+        assertTrue(Files.isRegularFile(microcontrollerManufacturer.resolve("stm32f103c8t6.node")), "stm32f103c8t6.node should exist")
+
+        val capacitorManufacturer = componentsDir.resolve("capacitor/manufacturer")
+        assertTrue(Files.isRegularFile(capacitorManufacturer.resolve("capacitor.node")), "capacitor.node should exist")
+
+        val sensorManufacturer = componentsDir.resolve("sensor/manufacturer")
+        assertTrue(Files.isRegularFile(sensorManufacturer.resolve("cht8310.node")), "cht8310.node should exist")
+        assertTrue(Files.isRegularFile(sensorManufacturer.resolve("cht8320.node")), "cht8320.node should exist")
+
+        // Load ATmega328P and verify structure
+        val atmegaRef = ru.nodebook.core.repo.NodeRepository.load(microcontrollerManufacturer.resolve("atmega328p.node"))
+        assertNotNull(atmegaRef, "ATmega328P node should be loadable")
+
+        assertEquals("ATmega328P", atmegaRef.meta.name)
+        assertEquals(ru.nodebook.core.model.NodeType.COMPONENT, atmegaRef.meta.type)
+        assertTrue(atmegaRef.meta.slug.startsWith("atmega"), "Slug should start with 'atmega'")
+
+        // Verify properties
+        val properties = atmegaRef.meta.properties
+        assertTrue(properties.containsKey("model3dPath"), "properties should contain model3dPath")
+        assertTrue(properties.containsKey("ports"), "properties should contain ports")
+
+        // Verify ports
+        val portsJson = properties["ports"]
+        assertNotNull(portsJson, "ports should not be null")
+        assertTrue(portsJson is JsonArray, "ports should be a JsonArray")
+        assertEquals(28, (portsJson as JsonArray).size.toInt(), "ATmega328P should have 28 ports")
+
+        // Verify first port
+        val firstPort = portsJson[0] as kotlinx.serialization.json.JsonObject
+        val numberValue = (firstPort["number"] as kotlinx.serialization.json.JsonPrimitive).content
+        val pinNumberValue = (firstPort["pinNumber"] as kotlinx.serialization.json.JsonPrimitive).content
+        assertEquals(1, numberValue.toInt())
+        assertEquals("1", pinNumberValue)
     }
 }
