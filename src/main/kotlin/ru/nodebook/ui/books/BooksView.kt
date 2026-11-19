@@ -127,13 +127,18 @@ class BooksView(private val controller: BooksController) {
         sectionBtnBox.children.clear()
         currentSectionBtns.clear()
 
+// В методе updateSectionButtons() замени создание кнопок на:
         sections.forEach { sectionName ->
             val sectionDir = bookPath.resolve(sectionName)
             if (ru.nodebook.core.repo.KnowledgeBaseRepository.hasSectionView(sectionDir)) {
                 val view = ru.nodebook.core.repo.KnowledgeBaseRepository.loadSectionView(sectionDir)
                 val title = view?.displayName(sectionName) ?: sectionName.replaceFirstChar { it.uppercaseChar() }
-                val btn = Button(title).apply {
+                val icon = view?.displayIcon() ?: ""
+                val btnText = if (icon.isNotBlank()) "$icon $title" else title
+
+                val btn = Button(btnText).apply {
                     setOnAction { onOpenSection?.invoke(sectionName) }
+                    tooltip = Tooltip(view?.displayDescription() ?: "")
                 }
                 sectionBtnBox.children.add(btn)
                 currentSectionBtns.add(btn)

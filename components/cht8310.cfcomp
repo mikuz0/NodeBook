@@ -1,14 +1,109 @@
 {
-  "schemaVersion": 1,
-  "name": "CHT8310",
-  "description": "Digital temperature and humidity sensor, I2C, DFN-3x3-6",
-  "model3dPath": null,
-  "ports": [
-    { "number": 1, "pinNumber": "1", "name": "SDA", "description": "I2C data" },
-    { "number": 2, "pinNumber": "2", "name": "GND", "description": "Ground" },
-    { "number": 3, "pinNumber": "3", "name": "ALERT", "description": "Alert output (open-drain)" },
-    { "number": 4, "pinNumber": "4", "name": "AD0", "description": "I2C address select" },
-    { "number": 5, "pinNumber": "5", "name": "VCC", "description": "Power supply" },
-    { "number": 6, "pinNumber": "6", "name": "SCL", "description": "I2C clock" }
-  ]
+    "id": "d2c02971-7932-43b7-88d1-eac45b3293c2",
+    "slug": "cht8310",
+    "name": "CHT8310",
+    "description": "Digital temperature and humidity sensor, I2C, DFN-3x3-6",
+    "refPrefix": "D",
+    "mainProperties": [
+        {
+            "key": "Интерфейс",
+            "value": "I2C",
+            "unit": ""
+        },
+        {
+            "key": "Корпус",
+            "value": "DFN-3x3-6",
+            "unit": ""
+        },
+        {
+            "key": "Диапазон температуры",
+            "value": "-40..+125",
+            "unit": "°C"
+        },
+        {
+            "key": "Диапазон влажности",
+            "value": "0..100",
+            "unit": "%RH"
+        },
+        {
+            "key": "Точность температуры",
+            "value": "±0.5",
+            "unit": "°C"
+        },
+        {
+            "key": "Точность влажности",
+            "value": "±2",
+            "unit": "%RH"
+        }
+    ],
+    "extraProperties": [
+        {
+            "key": "Напряжение питания",
+            "value": "2.4..5.5",
+            "unit": "В"
+        },
+        {
+            "key": "Ток потребления (sleep)",
+            "value": "1.5",
+            "unit": "мкА"
+        },
+        {
+            "key": "Разрешение АЦП",
+            "value": "16",
+            "unit": "бит"
+        },
+        {
+            "key": "Частота измерений",
+            "value": "1",
+            "unit": "Гц"
+        },
+        {
+            "key": "Производитель",
+            "value": "Chintech",
+            "unit": ""
+        },
+        {
+            "key": "Адрес I2C (по умолчанию)",
+            "value": "0x40",
+            "unit": ""
+        }
+    ],
+    "ports": [
+        {
+            "number": 1,
+            "pinNumber": "1",
+            "name": "SDA",
+            "description": "I2C data"
+        },
+        {
+            "number": 2,
+            "pinNumber": "2",
+            "name": "GND",
+            "description": "Ground"
+        },
+        {
+            "number": 3,
+            "pinNumber": "3",
+            "name": "ALERT",
+            "description": "Alert output (open-drain)"
+        },
+        {
+            "number": 4,
+            "pinNumber": "4",
+            "name": "AD0",
+            "description": "I2C address select"
+        },
+        {
+            "number": 5,
+            "pinNumber": "5",
+            "name": "VCC",
+            "description": "Power supply"
+        },
+        {
+            "number": 6,
+            "pinNumber": "6",
+            "name": "SCL",
+            "description": "I2C clock"
+        }
+    ]
 }

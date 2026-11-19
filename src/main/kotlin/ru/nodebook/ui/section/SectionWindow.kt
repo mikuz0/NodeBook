@@ -13,7 +13,6 @@ import javafx.scene.input.MouseButton
 import javafx.scene.layout.*
 import javafx.stage.Stage
 import javafx.util.Callback
-import kotlinx.serialization.json.Json
 import ru.nodebook.core.model.*
 import ru.nodebook.core.repo.NodeRepository
 import java.nio.file.Path
@@ -21,18 +20,16 @@ import org.slf4j.LoggerFactory
 import ru.nodebook.ui.common.UiUtils
 
 class SectionWindow : BookAware {
-
     private val log = LoggerFactory.getLogger(SectionWindow::class.java)
-    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
     private val executor = java.util.concurrent.Executors.newFixedThreadPool(2) { r ->
         Thread(r, "section-io").apply { isDaemon = true }
     }
-
     private val stage = Stage()
     private val treeView = javafx.scene.control.TreeView<TreeItemData>()
     private lateinit var currentSectionDir: Path
     private lateinit var currentSectionName: String
 
+    // Generic form fields
     private val nameField = TextField()
     private val descriptionArea = TextArea().apply { prefRowCount = 4 }
     private val typeLabel = Label()
@@ -41,38 +38,33 @@ class SectionWindow : BookAware {
     private val revertBtn = Button("Revert")
     private val statusLabel = Label().apply { style = "-fx-text-fill: gray; -fx-padding: 5 0 0 0;" }
 
-    // Компонентная панель
+    // Component form fields
     private val componentNameField = TextField().apply { isEditable = false }
     private val componentDescriptionArea = TextArea().apply { isEditable = false; prefRowCount = 3 }
-    private val componentModel3dPathField = TextField().apply { isEditable = false }
     private val componentTypeLabel = Label()
     private val componentSlugLabel = Label()
     private val componentRefreshBtn = Button("Refresh Component")
 
-    // Таблица портов
+    // Ports table
     private val portNumberCol = TableColumn<PortRow, Int>("#")
     private val portPinNumberCol = TableColumn<PortRow, String>("Pin#")
     private val portNameCol = TableColumn<PortRow, String>("Name")
     private val portDescriptionCol = TableColumn<PortRow, String>("Description")
-    private val portTableView = TableView<PortRow>().apply {
-        prefHeight = 200.0
-    }
+    private val portTableView = TableView<PortRow>().apply { prefHeight = 200.0 }
 
     var onClose: (() -> Unit)? = null
     private var isDirty = false
     private var currentMeta: NodeMeta? = null
+    private var currentComponent: ComponentNode? = null
     private var currentNodeRef: NodeRef? = null
     private var isReadOnly = false
     private var currentPortData: ObservableList<PortRow> = FXCollections.observableArrayList()
 
-    // Панели
     private lateinit var genericPane: VBox
-    private lateinit var componentPane: Region
     private lateinit var componentScrollPane: ScrollPane
     private lateinit var splitPane: SplitPane
 
     override fun getStage(): Stage? = stage
-
     override fun showWindow() {
         stage.minWidth = 900.0
         stage.minHeight = 600.0
@@ -83,8 +75,7 @@ class SectionWindow : BookAware {
         currentSectionName = section
         currentSectionDir = bookPath.resolve(section)
         isReadOnly = section !in listOf("components")
-        
-        // Установить заголовок и показать окно сразу
+
         val bookName = bookPath.fileName?.toString() ?: "unknown"
         stage.title = "NodeBook — $bookName / $section"
         stage.minWidth = 900.0
@@ -119,7 +110,6 @@ class SectionWindow : BookAware {
         typeLabel.text = meta.type.name
         slugLabel.text = meta.slug.ifBlank { "(auto-generated)" }
         currentMeta = meta
-        currentMeta?.let { currentMeta = it.copy() }
     }
 
     private fun updateFormState() {
@@ -132,11 +122,9 @@ class SectionWindow : BookAware {
         val rootItem = TreeItemData("root", null)
         val rootTreeItem = javafx.scene.control.TreeItem(rootItem)
         rootTreeItem.isExpanded = true
-
         nodes.forEach { nodeRef ->
             rootTreeItem.children.add(createTreeItem(nodeRef, rootTreeItem))
         }
-
         treeView.root = rootTreeItem
         setupSelectionListener()
         setupContextMenu()
@@ -149,18 +137,24 @@ class SectionWindow : BookAware {
                     val data = treeItem.value
                     if (data.nodeRef != null) {
                         currentNodeRef = data.nodeRef!!
-                        currentMeta = data.nodeRef!!.meta
                         isDirty = false
 
-                        // Переключение панелей по типу узла
-                        if (data.nodeRef!!.meta.type == NodeType.COMPONENT) {
-                            showComponentPane(data.nodeRef!!)
-                        } else {
-                            showGenericPane(data.nodeRef!!)
+                        when (val content = data.nodeRef!!.content) {
+                            is NodeContent.Leaf -> {
+                                currentComponent = content.component
+                                currentMeta = null
+                                showComponentPane(currentComponent!!)
+                            }
+                            is NodeContent.Container -> {
+                                currentMeta = content.meta
+                                currentComponent = null
+                                showGenericPane(currentMeta!!)
+                            }
                         }
                     } else {
                         currentNodeRef = null
                         currentMeta = null
+                        currentComponent = null
                         clearAllPanes()
                     }
                 }
@@ -168,20 +162,22 @@ class SectionWindow : BookAware {
         )
     }
 
-    private fun showComponentPane(nodeRef: NodeRef) {
-        // Удаляем genericPane из SplitPane и добавляем componentScrollPane
+    private fun showComponentPane(component: ComponentNode) {
         splitPane.getItems().remove(genericPane)
-        splitPane.getItems().add(componentScrollPane)
+        if (!splitPane.getItems().contains(componentScrollPane)) {
+            splitPane.getItems().add(componentScrollPane)
+        }
         splitPane.getDividerPositions().set(0, 0.35)
-        updateComponentPane(nodeRef.meta)
+        updateComponentPane(component)
     }
 
-    private fun showGenericPane(nodeRef: NodeRef) {
-        // Удаляем componentScrollPane из SplitPane и добавляем genericPane
+    private fun showGenericPane(meta: NodeMeta) {
         splitPane.getItems().remove(componentScrollPane)
-        splitPane.getItems().add(genericPane)
+        if (!splitPane.getItems().contains(genericPane)) {
+            splitPane.getItems().add(genericPane)
+        }
         splitPane.getDividerPositions().set(0, 0.35)
-        populateForm(nodeRef.meta)
+        populateForm(meta)
         updateFormState()
     }
 
@@ -192,17 +188,15 @@ class SectionWindow : BookAware {
         slugLabel.text = ""
         componentNameField.text = ""
         componentDescriptionArea.text = ""
-        componentModel3dPathField.text = ""
         componentTypeLabel.text = ""
         componentSlugLabel.text = ""
         currentPortData.clear()
     }
 
     private fun createTreeItem(nodeRef: NodeRef, parent: javafx.scene.control.TreeItem<TreeItemData>): javafx.scene.control.TreeItem<TreeItemData> {
-        val displayName = nodeRef.meta.name.ifBlank { nodeRef.meta.slug }
+        val displayName = nodeRef.name.ifBlank { nodeRef.slug }
         val data = TreeItemData(displayName, nodeRef)
         val item = javafx.scene.control.TreeItem(data)
-
         if (nodeRef.isContainer) {
             executor.submit {
                 val childRefs = NodeRepository.listChildren(nodeRef.path)
@@ -233,18 +227,14 @@ class SectionWindow : BookAware {
         deleteItem.setOnAction { handleDelete() }
 
         contextMenu.items.setAll(newTypeItem, newManufacturerItem, newComponentItem, SeparatorMenuItem(), deleteItem)
-
         if (isReadOnly) {
             listOf(newTypeItem, newManufacturerItem, newComponentItem, deleteItem).forEach { it.isVisible = false }
         }
 
         treeView.onMousePressed = javafx.event.EventHandler { event: javafx.scene.input.MouseEvent ->
             if (event.button == MouseButton.SECONDARY) {
-                // Right-click: select the item under mouse and show context menu
                 val selectedItem = treeView.selectionModel.selectedItem
-                selectedItem?.let { 
-                    contextMenu.show(treeView, event.screenX, event.screenY)
-                }
+                selectedItem?.let { contextMenu.show(treeView, event.screenX, event.screenY) }
             }
         }
     }
@@ -262,14 +252,10 @@ class SectionWindow : BookAware {
         dialog.headerText = "Enter name for new node"
         dialog.dialogPane.buttonTypes.addAll(ButtonType.OK, ButtonType.CANCEL)
 
-        val nameField = TextField()
-        nameField.promptText = "Name (required)"
-        val descArea = TextArea()
-        descArea.promptText = "Description (optional)"
-        descArea.prefRowCount = 3
-
+        val nameField = TextField().apply { promptText = "Name (required)" }
+        val descArea = TextArea().apply { promptText = "Description (optional)"; prefRowCount = 3 }
         dialog.dialogPane.content = VBox(10.0, nameField, descArea)
-        dialog.setResultConverter(Callback<ButtonType, Pair<String, String>?> { button: ButtonType ->
+        dialog.setResultConverter(Callback { button: ButtonType ->
             if (button == ButtonType.OK) Pair(nameField.text, descArea.text) else null
         })
 
@@ -282,14 +268,20 @@ class SectionWindow : BookAware {
                 UiUtils.errorAlert(stage, "Error", "Name is required")
                 return
             }
+
             val slug = NodeRepository.generateUniqueSlug(parentDir, name)
-            val meta = NodeMeta(type = expectedType, name = name, description = desc)
 
             val task = object : Task<Unit>() {
                 override fun call() {
                     when (expectedType) {
-                        NodeType.CATEGORY, NodeType.MANUFACTURER -> NodeRepository.createContainer(parentDir, slug, meta)
-                        NodeType.COMPONENT -> NodeRepository.createLeaf(parentDir, slug, meta)
+                        NodeType.CATEGORY, NodeType.MANUFACTURER -> {
+                            val meta = NodeMeta(type = expectedType, name = name, description = desc)
+                            NodeRepository.createContainer(parentDir, slug, meta)
+                        }
+                        NodeType.COMPONENT -> {
+                            val component = ComponentNode(name = name, description = desc, refPrefix = "X")
+                            NodeRepository.createLeaf(parentDir, slug, component)
+                        }
                         else -> throw IllegalArgumentException("Unexpected type: $expectedType")
                     }
                 }
@@ -307,14 +299,13 @@ class SectionWindow : BookAware {
 
     private fun handleDelete() {
         val nodeRef = currentNodeRef ?: return
-        if (nodeRef.meta.type == NodeType.SECTION) {
+        if (nodeRef.type == NodeType.SECTION) {
             UiUtils.infoAlert(stage, "Info", "Cannot delete section root")
             return
         }
-        if (!UiUtils.confirmAlert(stage, "Delete", "Delete \"${nodeRef.meta.name}\" and all children?")) {
+        if (!UiUtils.confirmAlert(stage, "Delete", "Delete \"${nodeRef.name}\" and all children?")) {
             return
         }
-
         val parentPath = nodeRef.path.parent
         val task = object : Task<Unit>() {
             override fun call() { NodeRepository.delete(nodeRef.path) }
@@ -322,13 +313,11 @@ class SectionWindow : BookAware {
                 refreshParentChildren(parentPath)
                 currentNodeRef = null
                 currentMeta = null
-                nameField.text = ""
-                descriptionArea.text = ""
-                typeLabel.text = ""
-                slugLabel.text = ""
+                currentComponent = null
+                clearAllPanes()
                 isDirty = false
                 updateFormState()
-                statusLabel.text = "Deleted: ${nodeRef.meta.name}"
+                statusLabel.text = "Deleted: ${nodeRef.name}"
             }
             override fun failed() {
                 UiUtils.errorAlert(stage, "Delete Error", exception?.message ?: "Unknown")
@@ -363,7 +352,7 @@ class SectionWindow : BookAware {
     private fun findTreeItemByPath(item: javafx.scene.control.TreeItem<TreeItemData>?, targetPath: Path): javafx.scene.control.TreeItem<TreeItemData>? {
         item?.let {
             if (it.value?.nodeRef?.path == targetPath) return it
-            it.children.forEach { child: javafx.scene.control.TreeItem<TreeItemData> ->
+            it.children.forEach { child ->
                 findTreeItemByPath(child, targetPath)?.let { result -> return result }
             }
         }
@@ -374,7 +363,6 @@ class SectionWindow : BookAware {
         val meta = currentMeta ?: return
         val nodeRef = currentNodeRef ?: return
         val updatedMeta = meta.copy(name = nameField.text, description = descriptionArea.text)
-
         val task = object : Task<Unit>() {
             override fun call() { NodeRepository.save(nodeRef.path, updatedMeta) }
             override fun succeeded() {
@@ -399,7 +387,10 @@ class SectionWindow : BookAware {
             override fun call(): NodeRef = NodeRepository.load(nodeRef.path)
                 ?: throw IllegalStateException("Node not found: ${nodeRef.path}")
             override fun succeeded() {
-                populateForm(value.meta)
+                when (val content = value.content) {
+                    is NodeContent.Container -> populateForm(content.meta)
+                    is NodeContent.Leaf -> updateComponentPane(content.component)
+                }
                 isDirty = false
                 updateFormState()
                 statusLabel.text = "Reverted"
@@ -426,26 +417,21 @@ class SectionWindow : BookAware {
                 val (tree, selected) = value
                 buildTree(tree ?: emptyList())
                 restoreExpanded(treeView.root, expandedPaths)
-
                 selected?.let { nr ->
                     val idx = findNodeIndex(treeView.root, nr.path)
                     if (idx >= 0) {
                         treeView.selectionModel.select(idx)
-                        // Обновляем панель компонента если нужно
-                        if (nr.meta.type == NodeType.COMPONENT) {
-                            javafx.application.Platform.runLater {
-                                updateComponentPane(nr.meta)
-                                statusLabel.text = "Component refreshed: ${nr.meta.name}"
+                        when (val content = nr.content) {
+                            is NodeContent.Leaf -> {
+                                updateComponentPane(content.component)
+                                statusLabel.text = "Component refreshed: ${content.component.name}"
                             }
-                        } else {
-                            statusLabel.text = "Refreshed"
+                            is NodeContent.Container -> statusLabel.text = "Refreshed"
                         }
                     } else {
                         statusLabel.text = "Refreshed (selected node not found)"
                     }
-                } ?: run {
-                    statusLabel.text = "Refreshed"
-                }
+                } ?: run { statusLabel.text = "Refreshed" }
             }
             override fun failed() {
                 UiUtils.errorAlert(stage, "Refresh Error", exception?.message ?: "Unknown")
@@ -487,117 +473,78 @@ class SectionWindow : BookAware {
         override fun toString(): String = displayName
     }
 
-    // Инициализация таблицы портов
     private fun initPortColumns() {
         portNumberCol.setCellValueFactory(PropertyValueFactory("number"))
         portNumberCol.prefWidth = 50.0
-
         portPinNumberCol.setCellValueFactory(PropertyValueFactory("pinNumber"))
         portPinNumberCol.prefWidth = 80.0
-
         portNameCol.setCellValueFactory(PropertyValueFactory("name"))
         portNameCol.prefWidth = 150.0
-
         portDescriptionCol.setCellValueFactory(PropertyValueFactory("description"))
         portDescriptionCol.prefWidth = 250.0
-
         portTableView.columns.setAll(portNumberCol, portPinNumberCol, portNameCol, portDescriptionCol)
         portTableView.items = currentPortData
         portTableView.isEditable = false
-        portNumberCol.isSortable = false
-        portPinNumberCol.isSortable = false
-        portNameCol.isSortable = false
-        portDescriptionCol.isSortable = false
     }
 
-    // Создание панели компонента
     private fun createComponentPane(): ScrollPane {
-        // Заголовок
         val titleBox = HBox(10.0).apply {
             children.addAll(
-                Label("Name:"),
-                componentNameField.apply { prefWidth = 200.0 },
-                Label("  Type:"),
-                componentTypeLabel,
-                Label("  Slug:"),
-                componentSlugLabel
+                Label("Name:"), componentNameField.apply { prefWidth = 200.0 },
+                Label("  Type:"), componentTypeLabel,
+                Label("  Slug:"), componentSlugLabel
             )
         }
-
-        // Поля
         val formGrid = GridPane().apply {
-            hgap = 10.0
-            vgap = 8.0
-            padding = Insets(10.0)
+            hgap = 10.0; vgap = 8.0; padding = Insets(10.0)
             add(Label("Description:"), 0, 0)
             add(componentDescriptionArea, 1, 0)
-            add(Label("Model 3D Path:"), 0, 1)
-            add(componentModel3dPathField.apply { prefWidth = 200.0 }, 1, 1)
         }
-
-        // Таблица портов
         val portTablePane = VBox(5.0, Label("Ports:"), portTableView).apply {
             HBox.setHgrow(portTableView, Priority.ALWAYS)
             VBox.setVgrow(portTableView, Priority.ALWAYS)
             padding = Insets(0.0, 10.0, 10.0, 10.0)
         }
-
-        // Кнопки
         val buttons = HBox(10.0, componentRefreshBtn).apply {
-            alignment = Pos.CENTER_LEFT
-            padding = Insets(0.0, 10.0, 10.0, 10.0)
+            alignment = Pos.CENTER_LEFT; padding = Insets(0.0, 10.0, 10.0, 10.0)
         }
-
-        // Основная панель
         val componentPane = VBox(0.0, titleBox, formGrid, portTablePane, buttons, statusLabel).apply {
             HBox.setHgrow(componentDescriptionArea, Priority.ALWAYS)
             VBox.setVgrow(componentDescriptionArea, Priority.ALWAYS)
             style = "-fx-padding: 0;"
         }
-
-        // ScrollPane для компонентной панели
         val resultScrollPane = ScrollPane(componentPane).apply {
             isFitToWidth = true
             VBox.setVgrow(this, Priority.ALWAYS)
         }
-
         componentRefreshBtn.setOnAction { refreshComponent() }
-
         return resultScrollPane
     }
 
-    // Обновление панели компонента
-    private fun updateComponentPane(meta: NodeMeta) {
-        componentNameField.text = meta.name.ifBlank { meta.slug }
-        componentDescriptionArea.text = meta.description
-        componentTypeLabel.text = meta.type.name
-        componentSlugLabel.text = meta.slug.ifBlank { "(auto-generated)" }
+    private fun updateComponentPane(component: ComponentNode) {
+        componentNameField.text = component.name.ifBlank { currentNodeRef?.slug ?: "" }
+        componentDescriptionArea.text = component.description
+        componentTypeLabel.text = "COMPONENT"
+        componentSlugLabel.text = currentNodeRef?.slug ?: "(auto-generated)"
 
-        val model3dPath = ComponentProperties.readModel3dPath(meta.properties)
-        componentModel3dPathField.text = model3dPath ?: "—"
-
-        // Загрузка портов
         currentPortData.clear()
-        val ports = ComponentProperties.readPorts(meta.properties)
-        currentPortData.addAll(ports)
-
-        // Сортировка по number
-        val sortedPorts = FXCollections.observableArrayList(currentPortData.sortedWith(compareBy { it.number }))
-        portTableView.items = sortedPorts
+        val ports = component.ports.map { PortRow(it.number, it.pinNumber, it.name, it.description) }
+        currentPortData.addAll(ports.sortedBy { it.number })
+        portTableView.items = currentPortData
     }
 
-    // Перечитывание компонента
     private fun refreshComponent() {
         val nodeRef = currentNodeRef ?: return
-
         val task = object : Task<NodeRef>() {
             override fun call(): NodeRef = NodeRepository.load(nodeRef.path)
                 ?: throw IllegalStateException("Node not found: ${nodeRef.path}")
             override fun succeeded() {
                 val loaded = value
                 javafx.application.Platform.runLater {
-                    updateComponentPane(loaded.meta)
-                    statusLabel.text = "Component refreshed: ${loaded.meta.name}"
+                    if (loaded.content is NodeContent.Leaf) {
+                        updateComponentPane((loaded.content as NodeContent.Leaf).component)
+                        statusLabel.text = "Component refreshed: ${(loaded.content as NodeContent.Leaf).component.name}"
+                    }
                 }
             }
             override fun failed() {
@@ -608,15 +555,10 @@ class SectionWindow : BookAware {
         executor.submit(task)
     }
 
-
-
     init {
         stage.setOnCloseRequest { executor.shutdownNow() }
-
-        // Инициализация таблицы портов
         initPortColumns()
 
-        // Generic панель (для SECTION/CATEGORY/MANUFACTURER)
         val formGrid = GridPane().apply {
             hgap = 10.0; vgap = 8.0; padding = Insets(10.0)
             add(Label("Name:"), 0, 0); add(nameField, 1, 0)
@@ -624,36 +566,23 @@ class SectionWindow : BookAware {
             add(Label("Type:"), 0, 2); add(typeLabel, 1, 2)
             add(Label("Slug:"), 0, 3); add(slugLabel, 1, 3)
         }
-
         saveBtn.setOnAction { saveChanges() }
         revertBtn.setOnAction { revertChanges() }
-
         val formButtons = HBox(10.0, saveBtn, revertBtn).apply {
             alignment = Pos.CENTER_LEFT; padding = Insets(0.0, 0.0, 10.0, 10.0)
         }
-
         genericPane = VBox(0.0, formGrid, formButtons, statusLabel).apply {
             HBox.setHgrow(descriptionArea, Priority.ALWAYS)
             VBox.setVgrow(descriptionArea, Priority.ALWAYS)
         }
 
-        // Component панель
         componentScrollPane = createComponentPane()
-        componentPane = componentScrollPane
-
-        // Изначально показываем generic панель
-        genericPane.isVisible = true
-        genericPane.isManaged = true
-        componentPane.isVisible = false
-        componentPane.isManaged = false
 
         val leftPane = Pane().apply {
             children.add(ScrollPane(treeView).apply { prefWidth = 300.0 })
         }
-
         val refreshBtn = Button("Refresh").apply { setOnAction { refreshSection() } }
         val closeBtn = Button("Close").apply { setOnAction { stage.close(); onClose?.invoke() } }
-
         val buttonBox = HBox(10.0, refreshBtn, closeBtn).apply {
             alignment = Pos.CENTER_RIGHT; padding = Insets(10.0)
         }
@@ -661,7 +590,6 @@ class SectionWindow : BookAware {
         splitPane = SplitPane()
         splitPane.getItems().addAll(leftPane, genericPane)
         splitPane.getDividerPositions().set(0, 0.35)
-
         stage.scene = Scene(VBox(0.0, splitPane, buttonBox), 900.0, 600.0)
     }
 }

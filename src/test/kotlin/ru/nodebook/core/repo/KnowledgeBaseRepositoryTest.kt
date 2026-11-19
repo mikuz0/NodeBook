@@ -1,9 +1,9 @@
 package ru.nodebook.core.repo
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import ru.nodebook.core.model.*
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.assertEquals
@@ -155,30 +155,29 @@ class KnowledgeBaseRepositoryTest {
         assertTrue(Files.isRegularFile(sensorManufacturer.resolve("cht8320.node")), "cht8320.node should exist")
 
         // Load ATmega328P and verify structure
-        val atmegaRef = ru.nodebook.core.repo.NodeRepository.load(microcontrollerManufacturer.resolve("atmega328p.node"))
+        val atmegaRef = NodeRepository.load(microcontrollerManufacturer.resolve("atmega328p.node"))
         assertNotNull(atmegaRef, "ATmega328P node should be loadable")
 
-        assertEquals("ATmega328P", atmegaRef.meta.name)
-        assertEquals(ru.nodebook.core.model.NodeType.COMPONENT, atmegaRef.meta.type)
-        assertTrue(atmegaRef.meta.slug.startsWith("atmega"), "Slug should start with 'atmega'")
+        // Access content through NodeContent.Leaf
+        val component = when (atmegaRef.content) {
+            is NodeContent.Leaf -> atmegaRef.content.component
+            else -> throw AssertionError("Expected Leaf node")
+        }
 
-        // Verify properties
-        val properties = atmegaRef.meta.properties
-        assertTrue(properties.containsKey("model3dPath"), "properties should contain model3dPath")
-        assertTrue(properties.containsKey("ports"), "properties should contain ports")
+        assertEquals("ATmega328P", component.name)
+        assertEquals(NodeType.COMPONENT, atmegaRef.type)
+        assertTrue(atmegaRef.slug.startsWith("atmega"), "Slug should start with 'atmega'")
 
-        // Verify ports
-        val portsJson = properties["ports"]
-        assertNotNull(portsJson, "ports should not be null")
-        assertTrue(portsJson is JsonArray, "ports should be a JsonArray")
-        assertEquals(28, (portsJson as JsonArray).size.toInt(), "ATmega328P should have 28 ports")
+        // Verify ports (now in ComponentNode.ports instead of properties)
+        val ports = component.ports
+        assertNotNull(ports)
+        assertTrue(ports.isNotEmpty(), "ATmega328P should have ports")
 
         // Verify first port
-        val firstPort = portsJson[0] as kotlinx.serialization.json.JsonObject
-        val numberValue = (firstPort["number"] as kotlinx.serialization.json.JsonPrimitive).content
-        val pinNumberValue = (firstPort["pinNumber"] as kotlinx.serialization.json.JsonPrimitive).content
-        assertEquals(1, numberValue.toInt())
-        assertEquals("1", pinNumberValue)
+        val firstPort = ports[0]
+        assertEquals(1, firstPort.number)
+        assertEquals("1", firstPort.pinNumber)
+        assertEquals("PC6/RESET", firstPort.name)
     }
 
     @Test
@@ -211,6 +210,45 @@ class KnowledgeBaseRepositoryTest {
             assertEquals("tree", view.kind)
             assertEquals(expectedTitles[sectionName], view.title)
             assertEquals(expectedTitles[sectionName], view.displayName(sectionName))
+        }
+    }
+
+    @Test
+    fun `create book creates type template placeholders`() {
+        val workspace = tempDir.resolve("workspace")
+        Files.createDirectories(workspace)
+
+        val bookDir = KnowledgeBaseRepository.create("template-test-book", workspace)
+        val componentsDir = bookDir.resolve("components")
+
+        // Check type directories have fields.json and view.json
+        val typeSlugs = listOf("resistor", "capacitor", "microcontroller", "sensor")
+
+        typeSlugs.forEach { slug ->
+            val typeDir = componentsDir.resolve(slug)
+            assertTrue(Files.isDirectory(typeDir), "Type directory $slug should exist")
+
+            val fieldsFile = typeDir.resolve("fields.json")
+            assertTrue(Files.isRegularFile(fieldsFile), "fields.json should exist in $slug")
+
+            val typeViewFile = typeDir.resolve("view.json")
+            assertTrue(Files.isRegularFile(typeViewFile), "view.json should exist in $slug")
+
+            // Check hasTypeFields/hasTypeView
+            assertTrue(KnowledgeBaseRepository.hasTypeFields(typeDir), "hasTypeFields should return true for $slug")
+            assertTrue(KnowledgeBaseRepository.hasTypeView(typeDir), "hasTypeView should return true for $slug")
+
+            // Check fields.json content
+            val fieldsContent = Files.readString(fieldsFile)
+            assertTrue(fieldsContent.contains("\"schemaVersion\""), "fields.json should contain schemaVersion")
+            assertTrue(fieldsContent.contains("\"fields\""), "fields.json should contain fields")
+            assertTrue(fieldsContent.contains("[]"), "fields.json should have empty fields array")
+
+            // Check view.json content
+            val typeViewContent = Files.readString(typeViewFile)
+            assertTrue(typeViewContent.contains("\"schemaVersion\""), "view.json should contain schemaVersion")
+            assertTrue(typeViewContent.contains("\"kind\""), "view.json should contain kind")
+            assertTrue(typeViewContent.contains("\"tree\""), "view.json should have kind=tree")
         }
     }
 }

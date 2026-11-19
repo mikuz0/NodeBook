@@ -1,12 +1,92 @@
 {
-  "schemaVersion": 1,
-  "name": "CHT8320",
-  "description": "Digital temperature and humidity sensor, I2C/SMBus, DFN-2x2-4",
-  "model3dPath": null,
-  "ports": [
-    { "number": 1, "pinNumber": "1", "name": "VCC", "description": "Power supply (1.8V–5.5V)" },
-    { "number": 2, "pinNumber": "2", "name": "SCL", "description": "I2C clock" },
-    { "number": 3, "pinNumber": "3", "name": "SDA", "description": "I2C data" },
-    { "number": 4, "pinNumber": "4", "name": "GND", "description": "Ground" }
-  ]
+    "id": "f8db7f8a-c80e-47ca-bfc8-72cd2e2acddd",
+    "slug": "cht8320",
+    "name": "CHT8320",
+    "description": "Digital temperature and humidity sensor, I2C/SMBus, DFN-2x2-4",
+    "refPrefix": "D",
+    "mainProperties": [
+        {
+            "key": "Интерфейс",
+            "value": "I2C/SMBus",
+            "unit": ""
+        },
+        {
+            "key": "Корпус",
+            "value": "DFN-2x2-4",
+            "unit": ""
+        },
+        {
+            "key": "Диапазон температуры",
+            "value": "-40..+85",
+            "unit": "°C"
+        },
+        {
+            "key": "Диапазон влажности",
+            "value": "0..100",
+            "unit": "%RH"
+        },
+        {
+            "key": "Точность температуры",
+            "value": "±0.5",
+            "unit": "°C"
+        },
+        {
+            "key": "Точность влажности",
+            "value": "±3",
+            "unit": "%RH"
+        }
+    ],
+    "extraProperties": [
+        {
+            "key": "Напряжение питания",
+            "value": "1.8..5.5",
+            "unit": "В"
+        },
+        {
+            "key": "Ток потребления (sleep)",
+            "value": "1.0",
+            "unit": "мкА"
+        },
+        {
+            "key": "Разрешение АЦП",
+            "value": "14",
+            "unit": "бит"
+        },
+        {
+            "key": "Производитель",
+            "value": "Chintech",
+            "unit": ""
+        },
+        {
+            "key": "Адрес I2C (по умолчанию)",
+            "value": "0x40",
+            "unit": ""
+        }
+    ],
+    "ports": [
+        {
+            "number": 1,
+            "pinNumber": "1",
+            "name": "VCC",
+            "description": "Power supply (1.8V–5.5V)"
+        },
+        {
+            "number": 2,
+            "pinNumber": "2",
+            "name": "SCL",
+            "description": "I2C clock"
+        },
+        {
+            "number": 3,
+            "pinNumber": "3",
+            "name": "SDA",
+            "description": "I2C data"
+        },
+        {
+            "number": 4,
+            "pinNumber": "4",
+            "name": "GND",
+            "description": "Ground"
+        }
+    ]
 }

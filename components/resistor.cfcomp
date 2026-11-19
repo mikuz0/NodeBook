@@ -1,10 +1,53 @@
 {
-  "schemaVersion": 1,
-  "name": "Resistor",
-  "description": "Generic resistor, 0603 package",
-  "model3dPath": null,
-  "ports": [
-    { "number": 1, "pinNumber": "1", "name": "Pin1", "description": "Terminal 1" },
-    { "number": 2, "pinNumber": "2", "name": "Pin2", "description": "Terminal 2" }
-  ]
+    "id": "f094478c-941f-4917-8d1e-f67129de11a9",
+    "name": "Resistor",
+    "description": "Generic resistor, 0603 package",
+    "refPrefix": "R",
+    "ports": [
+        {
+            "number": 1,
+            "pinNumber": "1",
+            "name": "Pin1",
+            "description": "Terminal 1"
+        },
+        {
+            "number": 2,
+            "pinNumber": "2",
+            "name": "Pin2",
+            "description": "Terminal 2"
+        }
+    ],
+    "mainProperties": [
+        {
+            "key": "Номинал",
+            "value": "10",
+            "unit": "кОм"
+        },
+        {
+            "key": "Мощность",
+            "value": "0.1",
+            "unit": "Вт"
+        },
+        {
+            "key": "Допуск",
+            "value": "±1",
+            "unit": "%"
+        },
+        {
+            "key": "Корпус",
+            "value": "0603"
+        }
+    ],
+    "extraProperties": [
+        {
+            "key": "Температурный диапазон",
+            "value": "-55..+125",
+            "unit": "°C"
+        },
+        {
+            "key": "ТКР",
+            "value": "±100",
+            "unit": "ppm/°C"
+        }
+    ]
 }

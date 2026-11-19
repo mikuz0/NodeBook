@@ -1,10 +1,60 @@
 {
-  "schemaVersion": 1,
-  "name": "Capacitor",
-  "description": "Generic ceramic capacitor, 0603 package",
-  "model3dPath": null,
-  "ports": [
-    { "number": 1, "pinNumber": "1", "name": "Pin1", "description": "Terminal 1" },
-    { "number": 2, "pinNumber": "2", "name": "Pin2", "description": "Terminal 2" }
-  ]
+    "id": "e92eb785-2ba1-4eb7-9bd8-6c2b51a4a402",
+    "slug": "capacitor-1",
+    "name": "Capacitor",
+    "description": "Generic ceramic capacitor, 0603 package",
+    "refPrefix": "C",
+    "mainProperties": [
+        {
+            "key": "Ёмкость",
+            "value": "100",
+            "unit": "нФ"
+        },
+        {
+            "key": "Корпус",
+            "value": "0603",
+            "unit": ""
+        },
+        {
+            "key": "Напряжение",
+            "value": "50",
+            "unit": "В"
+        },
+        {
+            "key": "Диэлектрик",
+            "value": "X7R",
+            "unit": ""
+        }
+    ],
+    "extraProperties": [
+        {
+            "key": "Допуск",
+            "value": "±10",
+            "unit": "%"
+        },
+        {
+            "key": "Температурный диапазон",
+            "value": "-55..+125",
+            "unit": "°C"
+        },
+        {
+            "key": "ТКЕ",
+            "value": "±15",
+            "unit": "%/°C"
+        }
+    ],
+    "ports": [
+        {
+            "number": 1,
+            "pinNumber": "1",
+            "name": "Pin1",
+            "description": "Terminal 1"
+        },
+        {
+            "number": 2,
+            "pinNumber": "2",
+            "name": "Pin2",
+            "description": "Terminal 2"
+        }
+    ]
 }
